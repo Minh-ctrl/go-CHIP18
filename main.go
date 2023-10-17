@@ -5,6 +5,7 @@ import (
 	_ "image/png"
 	"log"
 
+	chip8 "github.com/Minh-ctrl/go-CHIP18.git/struct"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
@@ -12,8 +13,8 @@ import (
 const (
 	screenWidth  = 640
 	screenHeight = 320
-	rectangleW   = 10
-	rectangleH   = 10
+	rectangleW   = 20
+	rectangleH   = 20
 
 	frameOX     = 0
 	frameOY     = 32
@@ -39,13 +40,18 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	screen.Fill(color.White)
 	// coordinates
+	var frame chip8.Chip8
+	// log.Println(frame.Framebuffer[2*3*64])
+	// populate
 	for i := 0; i < 64; i++ {
-		rectangleX := (screenWidth - rectangleW)
 
 		for j := 0; j < 32; j++ {
-			rectangleY := (screenHeight - rectangleH)
-
-			vector.DrawFilledRect(screen, float32(rectangleX), float32(rectangleY), rectangleW, rectangleH, color.Black, false)
+			if i%2 == 0 && j%2 == 0 {
+				frame.Framebuffer[i*j] = true
+			}
+			if frame.Framebuffer[j*i] {
+				vector.DrawFilledRect(screen, float32(i)*20, float32(j)*20, rectangleW, rectangleH, color.Black, false)
+			}
 		}
 	}
 }
