@@ -4,15 +4,34 @@ import (
 	chip8 "github.com/Minh-ctrl/go-CHIP18.git/struct"
 )
 
-var frame chip8.Chip8
-
 const (
 	Columns = 64
 	Rows    = 32
 	Scale   = 15
 )
 
-// func setPixel(x, y) {
+var frame chip8.Chip8
 
-// 	// frame.Framebuffer
-// }
+func setPixel(x int, y int, frameBuffer [64 * 32]bool) {
+	//
+	if x > Columns {
+		x -= Columns
+	} else if x < 0 {
+		x += Columns
+	}
+	if y > Rows {
+		y -= Rows
+	} else if y < 0 {
+		y += Rows
+	}
+	var displayIndex = x + (y * Columns)
+	// flip the value
+	frameBuffer[displayIndex] = !frameBuffer[displayIndex]
+	// cant return? need to go through golang again
+}
+
+func clear(frameBuffer [64 * 32]bool) {
+	var newFrameBuffer = frame.Framebuffer
+	// reset state
+	frameBuffer = newFrameBuffer
+}
