@@ -13,12 +13,12 @@ import (
 const (
 	screenWidth  = monitor.Columns * monitor.Scale
 	screenHeight = monitor.Rows * monitor.Scale
-	rectangleW   = 10 * monitor.Scale
-	rectangleH   = 10 * monitor.Scale
+	rectangleW   = 1 * monitor.Scale
+	rectangleH   = 1 * monitor.Scale
 	frameOX      = 0
 	frameOY      = 0
-	frameWidth   = 64
-	frameHeight  = 32
+	frameWidth   = monitor.Columns
+	frameHeight  = monitor.Rows
 	frameCount   = 8
 )
 
@@ -33,17 +33,17 @@ func (g *Game) Update() error {
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(float64(frameWidth), float64(frameHeight))
-	op.GeoM.Translate(screenWidth, screenHeight)
+	op.GeoM.Translate(float64(frameWidth)*monitor.Scale, float64(frameHeight)*monitor.Scale)
+	op.GeoM.Translate(screenHeight, screenWidth)
 	// define the x and y
 
 	screen.Fill(color.Black)
 	// coordinates
 	// populate
-	for i := 0; i < monitor.Rows; i++ {
+	for i := 0; i < monitor.Columns; i++ {
 
-		for j := 0; j < monitor.Columns; j++ {
-			if i%2 == 0 {
+		for j := 0; j < monitor.Rows; j++ {
+			if (i+j)%2 == 0 {
 				vector.DrawFilledRect(screen, float32(i)*monitor.Scale, float32(j)*monitor.Scale, rectangleW, rectangleH, color.White, false)
 
 			}
