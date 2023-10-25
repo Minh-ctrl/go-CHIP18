@@ -6,8 +6,9 @@ import (
 	"log"
 	"math"
 
+	chip8struct "github.com/Minh-ctrl/go-CHIP18.git/struct"
+
 	monitor "github.com/Minh-ctrl/go-CHIP18.git/monitor"
-	chip8 "github.com/Minh-ctrl/go-CHIP18.git/struct"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
@@ -33,8 +34,47 @@ func (g *Game) Update() error {
 	return nil
 }
 
-var frame chip8.Chip8
+var chip8 chip8struct.Chip8
 
+// stack push and pop implementation
+
+func push(value uint16) {
+	chip8.Stack = append(chip8.Stack, value)
+
+}
+
+func pop() {
+	l := len(chip8.Stack)
+	// chip8.PC = chip8.Stack[l-1]
+	// chip8.Stack = chip8.Stack[:l-1] // pop it
+	chip8.PC, chip8.Stack = chip8.Stack[l-1], chip8.Stack[:l-1]
+}
+
+// instructions implementation
+
+func intepret(instruction int) {
+	chip8.PC += 2
+	// get x and y instructions
+
+	x := (instruction & 0x0F00) >> 8
+	y := (instruction & 0x00F0) >> 4
+
+	switch line := instruction & 0xF000; line {
+	case 0x0000:
+		switch instruction {
+		case 0x00E0:
+			// CLS clear display
+			clearFrame()
+			break
+		case 0x00EE:
+			// return from function
+			pop()
+		}
+
+	}
+}
+
+// functions for displaying monitor
 func setPixel(x int, y int) {
 	//
 	if x > monitor.Columns {
@@ -49,20 +89,21 @@ func setPixel(x int, y int) {
 	}
 	var displayIndex = x + (y * monitor.Columns)
 	// flip the value
-	frame.Framebuffer[displayIndex] = !frame.Framebuffer[displayIndex]
-	// cant return? need to go through golang again
+	chip8.Framebuffer[displayIndex] = !chip8.Framebuffer[displayIndex]
 }
 
-//	func testRender() {
-//		setPixel(12, 32)
-//		setPixel(2, 1)
-//	}
+func clearFrame() {
+	// because i'm dumb
+	for i := range chip8.Framebuffer {
+		chip8.Framebuffer[i] = false
+	}
+}
 func paint(screen *ebiten.Image) {
 	for i := 0; i < monitor.Columns*monitor.Rows; i++ {
 		var x = (i % monitor.Columns) * monitor.Scale
 		var y = math.Floor(float64(i)/monitor.Columns) * monitor.Scale
 
-		if frame.Framebuffer[i] {
+		if chip8.Framebuffer[i] {
 			vector.DrawFilledRect(screen, float32(x), float32(y), rectangleW, rectangleH, color.White, false)
 		}
 	}
@@ -72,22 +113,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(float64(frameWidth)*monitor.Scale, float64(frameHeight)*monitor.Scale)
 	op.GeoM.Translate(screenHeight, screenWidth)
-	// define the x and y
 
 	screen.Fill(color.Black)
 	// draw is being run over and over again
-	setPixel(64, 2)
-	setPixel(64, 3)
-
 	paint(screen)
 }
-
-// func clear(frameBuffer[]bool) {
-// 	// nah this doesnt work
-// 	var newFrameBuffer = frame.Framebuffer
-// 	// reset state
-// 	// frameBuffer = newFrameBuffer
-// }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return screenWidth, screenHeight
@@ -95,7 +125,8 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 
 func main() {
 	ebiten.SetWindowSize(screenWidth, screenHeight)
-
+	chip8.PC = 0x200
+	chip8.Stack = make([]uint16, 16)
 	if err := ebiten.RunGame(&Game{}); err != nil {
 		log.Fatal(err)
 	}
