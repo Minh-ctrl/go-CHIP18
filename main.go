@@ -5,6 +5,7 @@ import (
 	_ "image/png"
 	"log"
 	"math"
+	rand "math/rand"
 
 	chip8struct "github.com/Minh-ctrl/go-CHIP18.git/struct"
 
@@ -54,8 +55,8 @@ func pop() {
 
 func intepret(instruction uint16) {
 	chip8.PC += 2
-	// bit shift to get x and y values
-
+	// all values
+	nnn := instruction & 0xFFF
 	kk := instruction & 0xFF
 	x := (instruction & 0x0F00) >> 8
 	y := (instruction & 0x00F0) >> 4
@@ -129,10 +130,96 @@ func intepret(instruction uint16) {
 			// Vy is subtracted from Vx, and the results stored in Vx.
 			chip8.Vx[x] -= chip8.Vx[y]
 		case 0x6:
-			//  SHR Vx {, Vy}
-			chip8.Vx[0xF] = chip8.Vx[x]
+			//  SHR Vx {, Vy} this one is interesting for different implementation :think:
+			chip8.Vx[0xF] = chip8.Vx[x] & 0x1
+			chip8.Vx[x] >>= 1
+		case 0x7:
+			chip8.Vx[0xF] = 0
+			if chip8.Vx[y] > chip8.Vx[x] {
+				chip8.Vx[0xF] = 1
+
+			}
+			chip8.Vx[x] = chip8.Vx[y] - chip8.Vx[x]
+		case 0xE:
+			//  SHL Vx {, Vy}
+			chip8.Vx[x] <<= 1
+		default:
+			// throw error
+		}
+	case 0x9000:
+		if chip8.Vx[x] != chip8.Vx[y] {
+			chip8.PC += 2
 		}
 
+	case 0xA000:
+		chip8.IndexRegister = nnn
+
+	case 0xB000:
+		chip8.PC = nnn + chip8.Vx[0]
+
+	case 0xC000:
+		randomValue := uint16(rand.Intn(256))
+		chip8.Vx[x] = randomValue & kk
+
+	case 0xD000:
+		//  DRW Vx, Vy, nibble
+
+		// The interpreter reads n bytes from memory, starting at the address stored in I.
+		// These bytes are then displayed as sprites on screen at coordinates (Vx, Vy).
+		// Sprites are XORed onto the existing screen.
+		// If this causes any pixels to be erased, VF is set to 1, otherwise it is set to 0.
+		//  If the sprite is positioned so part of it is outside the coordinates of the display,
+		// it wraps around to the opposite side of the screen.
+		width := uint16(8)
+		height := (instruction & 0xF)
+		chip8.Vx[0xF] = 0
+
+		for row := uint16(0); row < height; row++ {
+			sprite := chip8.Memory[chip8.IndexRegister+row]
+			for col := uint16(0); col < width; col++ {
+				if (sprite & 0x80) > 0 {
+					setPixel(int(chip8.Vx[x]+row), int(chip8.Vx[y]+col))
+					chip8.Vx[0xF] = 1
+				}
+				sprite >>= 1
+			}
+		}
+
+	case 0xE000:
+		// keyboard
+		switch instruction & kk {
+		case 0x9E:
+		}
+
+	case 0xF000:
+		switch instruction & kk {
+		case 0x07:
+			// - LD Vx, DT
+		case 0x0A:
+			// - LD Vx, K
+		case 0x15:
+			// - LD DT, Vx
+		case 0x18:
+			// - LD ST, Vx
+		case 0x1E:
+			// - ADD I, Vx
+			chip8.IndexRegister += chip8.Vx[x]
+		case 0x29:
+		// - LD F, Vx
+		case 0x33:
+			// -/LD B, Vx
+		case 0x55:
+			// - LD [I], Vx
+			for i := uint8(0); i < uint8(x); i++ {
+				chip8.Memory[uint8(chip8.IndexRegister)+i] = uint8(chip8.Vx[i])
+			}
+
+		case 0x65:
+			// - LD Vx, [I]
+			for i := uint16(0); i < uint16(x); i++ {
+				chip8.Vx[i] = uint16(chip8.Memory[chip8.IndexRegister+i])
+			}
+		}
 	}
 
 }
@@ -190,6 +277,7 @@ func main() {
 	ebiten.SetWindowSize(screenWidth, screenHeight)
 	chip8.PC = 0x200
 	chip8.Stack = make([]uint16, 16)
+	chip8.IndexRegister = 0
 	if err := ebiten.RunGame(&Game{}); err != nil {
 		log.Fatal(err)
 	}
