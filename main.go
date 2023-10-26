@@ -45,17 +45,18 @@ func push(value uint16) {
 
 func pop() {
 	l := len(chip8.Stack)
-	// chip8.PC = chip8.Stack[l-1]
-	// chip8.Stack = chip8.Stack[:l-1] // pop it
+	// chip8.PC = chip8.Stack[l-1] //assign location
+	// chip8.Stack = chip8.Stack[:l-1] // pop
 	chip8.PC, chip8.Stack = chip8.Stack[l-1], chip8.Stack[:l-1]
 }
 
 // instructions implementation
 
-func intepret(instruction int) {
+func intepret(instruction uint16) {
 	chip8.PC += 2
-	// get x and y instructions
+	// bit shift to get x and y values
 
+	kk := instruction & 0xFF
 	x := (instruction & 0x0F00) >> 8
 	y := (instruction & 0x00F0) >> 4
 
@@ -65,13 +66,75 @@ func intepret(instruction int) {
 		case 0x00E0:
 			// CLS clear display
 			clearFrame()
-			break
 		case 0x00EE:
-			// return from function
+			// program counter to the address at the top of the stack, subtracts 1 from the stack pointer
 			pop()
+		}
+	case 0x1000:
+		//  JP addr
+		// set program counter jump to nnn
+		chip8.PC = instruction & 0xFFF
+	case 0x2000:
+		// CALL addr
+		// call function (subroutine)
+		// increment stack pointer then put PC on top of stack, then set pc to nnn
+		push(chip8.PC)
+		chip8.PC = instruction & 0xFFF
+	case 0x3000:
+		// 3xkk
+		// SE Vx, byte
+		if chip8.Vx[x] == kk {
+			chip8.PC += 2
+		}
+	case 0x4000:
+		// 4xkk
+		// Vx, byte
+		if chip8.Vx[x] != kk {
+			chip8.PC += 2
+		}
+	case 0x5000:
+		if chip8.Vx[x] == chip8.Vx[y] {
+			chip8.PC += 2
+		}
+	case 0x6000:
+		chip8.Vx[x] = kk
+	case 0x7000:
+		chip8.Vx[x] += chip8.Vx[y]
+	case 0x8000:
+
+		switch instruction & 0xF {
+		case 0x0:
+			chip8.Vx[x] = chip8.Vx[y]
+		case 0x1:
+			chip8.Vx[x] = chip8.Vx[x] | chip8.Vx[y]
+		case 0x2:
+			chip8.Vx[x] = chip8.Vx[x] & chip8.Vx[y]
+		case 0x3:
+			chip8.Vx[x] = chip8.Vx[x] ^ chip8.Vx[y]
+		case 0x4:
+			// chip8.Vx[x] = chip8.Vx[x] + chip8.Vx[y]
+			sum := chip8.Vx[x] + chip8.Vx[y]
+			if sum > 0xFF {
+				chip8.Vx[0xF] = 1
+				break
+			}
+			chip8.Vx[0xF] = 0
+
+		case 0x5:
+			// SUB Vx, Vy
+			chip8.Vx[0xF] = 0
+			if chip8.Vx[x] > chip8.Vx[y] {
+				chip8.Vx[0xF] = 1
+			}
+			// Vy is subtracted from Vx, and the results stored in Vx.
+			chip8.Vx[x] -= chip8.Vx[y]
+		case 0x6:
+			//  SHR Vx {, Vy}
+			chip8.Vx[0xF] = chip8.Vx[x]
 		}
 
 	}
+
 }
 
 // functions for displaying monitor
