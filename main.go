@@ -1,18 +1,16 @@
 package main
 
 import (
-	"fmt"
 	"image/color"
 	_ "image/png"
 	"log"
 	"math"
 	"math/rand"
 
-	chip8struct "github.com/Minh-ctrl/go-CHIP18.git/struct"
-
+	keyboard "github.com/Minh-ctrl/go-CHIP18.git/keyboard"
 	"github.com/Minh-ctrl/go-CHIP18.git/monitor"
+	chip8struct "github.com/Minh-ctrl/go-CHIP18.git/struct"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
@@ -32,35 +30,15 @@ type Game struct {
 	count int
 }
 
-var (
-	gameKeys = []ebiten.Key{
-		ebiten.Key1,
-		ebiten.Key2,
-		ebiten.Key3,
-		ebiten.Key4,
-		ebiten.KeyQ,
-		ebiten.KeyW,
-		ebiten.KeyE,
-		ebiten.KeyR,
-		ebiten.KeyA,
-		ebiten.KeyS,
-		ebiten.KeyD,
-		ebiten.KeyF,
-		ebiten.KeyZ,
-		ebiten.KeyX,
-		ebiten.KeyC,
-		ebiten.KeyV,
-	}
-)
-
 func (g *Game) Update() error {
 	g.count++
 	// g.keys = inpututil.AppendPressedKeys(g.keys[:0]) //only call this in update function
-	for i, key := range gameKeys {
-		if inpututil.IsKeyJustPressed(key) { //listener here
-			fmt.Println(i, key)
-		}
-	}
+	// for i, key := range gameKeys {
+	// 	if inpututil.IsKeyJustPressed(key) { //listener here
+	// 		fmt.Println(i, key)
+	// 	}
+	// }
+	keyboard.KeyListener()
 	return nil
 }
 
