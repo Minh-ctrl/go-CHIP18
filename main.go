@@ -33,12 +33,6 @@ type Game struct {
 func (g *Game) Update() error {
 	g.count++
 	// g.keys = inpututil.AppendPressedKeys(g.keys[:0]) //only call this in update function
-	// for i, key := range gameKeys {
-	// 	if inpututil.IsKeyJustPressed(key) { //listener here
-	// 		fmt.Println(i, key)
-	// 	}
-	// }
-	keyboard.KeyListener()
 	return nil
 }
 
@@ -217,9 +211,13 @@ func intepret(instruction uint16) {
 		// keyboard
 		switch instruction & kk {
 		case 0x9E:
-			chip8.PC += 2
+			if keyboard.KeyListener(0x1) {
+				chip8.PC += 2
+			}
 		case 0xA1:
-
+			if !keyboard.KeyListener(0x1) {
+				chip8.PC += 2
+			}
 		}
 
 	case 0xF000:
