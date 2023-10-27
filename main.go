@@ -1,16 +1,18 @@
 package main
 
 import (
+	"fmt"
 	"image/color"
 	_ "image/png"
 	"log"
 	"math"
-	rand "math/rand"
+	"math/rand"
 
 	chip8struct "github.com/Minh-ctrl/go-CHIP18.git/struct"
 
-	monitor "github.com/Minh-ctrl/go-CHIP18.git/monitor"
+	"github.com/Minh-ctrl/go-CHIP18.git/monitor"
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
@@ -28,10 +30,34 @@ const (
 
 type Game struct {
 	count int
+	keys  []ebiten.Key
 }
+
+var (
+	gameKeys = []ebiten.Key{
+		ebiten.Key1,
+		ebiten.Key2,
+		ebiten.Key3,
+		ebiten.KeyQ,
+		ebiten.KeyW,
+		ebiten.KeyE,
+		ebiten.KeyA,
+		ebiten.KeyS,
+		ebiten.KeyD,
+		ebiten.KeyZ,
+		ebiten.KeyX,
+		ebiten.KeyC,
+	}
+)
 
 func (g *Game) Update() error {
 	g.count++
+	// g.keys = inpututil.AppendPressedKeys(g.keys[:0]) //only call this in update function
+	for i, key := range gameKeys {
+		if inpututil.IsKeyJustPressed(key) {
+			fmt.Println(i, key)
+		}
+	}
 	return nil
 }
 
@@ -39,6 +65,14 @@ var chip8 chip8struct.Chip8
 
 // stack push and pop implementation
 
+func init() {
+	// init values
+	ebiten.SetWindowSize(screenWidth, screenHeight)
+	chip8.PC = 0x200
+	chip8.Stack = make([]uint16, 16)
+	chip8.IndexRegister = 0
+
+}
 func push(value uint16) {
 	chip8.Stack = append(chip8.Stack, value)
 
@@ -68,6 +102,7 @@ func intepret(instruction uint16) {
 			// CLS clear display
 			clearFrame()
 		case 0x00EE:
+			// RET
 			// program counter to the address at the top of the stack, subtracts 1 from the stack pointer
 			pop()
 		}
@@ -94,25 +129,33 @@ func intepret(instruction uint16) {
 			chip8.PC += 2
 		}
 	case 0x5000:
+		// SE Vx, Vy
 		if chip8.Vx[x] == chip8.Vx[y] {
 			chip8.PC += 2
 		}
 	case 0x6000:
+		// LD Vx, byte
 		chip8.Vx[x] = kk
 	case 0x7000:
+		// ADD Vx, byte
 		chip8.Vx[x] += chip8.Vx[y]
 	case 0x8000:
-
 		switch instruction & 0xF {
+
 		case 0x0:
+			// LD Vx, Vy
 			chip8.Vx[x] = chip8.Vx[y]
 		case 0x1:
+			// OR Vx, Vy
 			chip8.Vx[x] = chip8.Vx[x] | chip8.Vx[y]
 		case 0x2:
+			// AND Vx, Vy
 			chip8.Vx[x] = chip8.Vx[x] & chip8.Vx[y]
 		case 0x3:
+			// XOR Vx, Vy
 			chip8.Vx[x] = chip8.Vx[x] ^ chip8.Vx[y]
 		case 0x4:
+			// ADD Vx, Vy
 			// chip8.Vx[x] = chip8.Vx[x] + chip8.Vx[y]
 			sum := chip8.Vx[x] + chip8.Vx[y]
 			if sum > 0xFF {
@@ -134,6 +177,7 @@ func intepret(instruction uint16) {
 			chip8.Vx[0xF] = chip8.Vx[x] & 0x1
 			chip8.Vx[x] >>= 1
 		case 0x7:
+			// SUBN Vx, Vy
 			chip8.Vx[0xF] = 0
 			if chip8.Vx[y] > chip8.Vx[x] {
 				chip8.Vx[0xF] = 1
@@ -152,12 +196,15 @@ func intepret(instruction uint16) {
 		}
 
 	case 0xA000:
+		// LD I, addr
 		chip8.IndexRegister = nnn
 
 	case 0xB000:
+		// JP V0, addr
 		chip8.PC = nnn + chip8.Vx[0]
 
 	case 0xC000:
+		// RND Vx, byte
 		randomValue := uint16(rand.Intn(256))
 		chip8.Vx[x] = randomValue & kk
 
@@ -259,13 +306,17 @@ func paint(screen *ebiten.Image) {
 	}
 }
 
+func keyMap(keyString string) {
+	// only allow a certain key pressed
+
+}
 func (g *Game) Draw(screen *ebiten.Image) {
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(float64(frameWidth)*monitor.Scale, float64(frameHeight)*monitor.Scale)
 	op.GeoM.Translate(screenHeight, screenWidth)
 
 	screen.Fill(color.Black)
-	// draw is being run over and over again
+
 	paint(screen)
 }
 
@@ -274,10 +325,7 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 }
 
 func main() {
-	ebiten.SetWindowSize(screenWidth, screenHeight)
-	chip8.PC = 0x200
-	chip8.Stack = make([]uint16, 16)
-	chip8.IndexRegister = 0
+
 	if err := ebiten.RunGame(&Game{}); err != nil {
 		log.Fatal(err)
 	}
