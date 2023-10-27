@@ -30,7 +30,6 @@ const (
 
 type Game struct {
 	count int
-	keys  []ebiten.Key
 }
 
 var (
@@ -38,15 +37,19 @@ var (
 		ebiten.Key1,
 		ebiten.Key2,
 		ebiten.Key3,
+		ebiten.Key4,
 		ebiten.KeyQ,
 		ebiten.KeyW,
 		ebiten.KeyE,
+		ebiten.KeyR,
 		ebiten.KeyA,
 		ebiten.KeyS,
 		ebiten.KeyD,
+		ebiten.KeyF,
 		ebiten.KeyZ,
 		ebiten.KeyX,
 		ebiten.KeyC,
+		ebiten.KeyV,
 	}
 )
 
@@ -54,7 +57,7 @@ func (g *Game) Update() error {
 	g.count++
 	// g.keys = inpututil.AppendPressedKeys(g.keys[:0]) //only call this in update function
 	for i, key := range gameKeys {
-		if inpututil.IsKeyJustPressed(key) {
+		if inpututil.IsKeyJustPressed(key) { //listener here
 			fmt.Println(i, key)
 		}
 	}
@@ -236,6 +239,9 @@ func intepret(instruction uint16) {
 		// keyboard
 		switch instruction & kk {
 		case 0x9E:
+			chip8.PC += 2
+		case 0xA1:
+
 		}
 
 	case 0xF000:
@@ -306,10 +312,6 @@ func paint(screen *ebiten.Image) {
 	}
 }
 
-func keyMap(keyString string) {
-	// only allow a certain key pressed
-
-}
 func (g *Game) Draw(screen *ebiten.Image) {
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(float64(frameWidth)*monitor.Scale, float64(frameHeight)*monitor.Scale)
