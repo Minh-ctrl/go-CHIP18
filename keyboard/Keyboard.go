@@ -26,6 +26,6 @@ var (
 	}
 )
 
-func KeyListener(test uint16) (result bool) {
-	return inpututil.IsKeyJustPressed(KeyBoardMaps[test]) //listener here
+func KeyListener(key uint16) (result bool) {
+	return inpututil.IsKeyJustPressed(KeyBoardMaps[key]) //listener here
 }

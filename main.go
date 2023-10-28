@@ -1,16 +1,19 @@
 package main
 
 import (
+	"fmt"
 	"image/color"
 	_ "image/png"
 	"log"
 	"math"
 	"math/rand"
+	"os"
 
 	keyboard "github.com/Minh-ctrl/go-CHIP18.git/keyboard"
 	"github.com/Minh-ctrl/go-CHIP18.git/monitor"
 	chip8struct "github.com/Minh-ctrl/go-CHIP18.git/struct"
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
@@ -69,12 +72,14 @@ func intepret(instruction uint16) {
 	kk := instruction & 0xFF
 	x := (instruction & 0x0F00) >> 8
 	y := (instruction & 0x00F0) >> 4
-
+	// fmt.Println(instruction, nnn, x, y, kk)
+	// fmt.Println(instruction & 0xF000)
 	switch line := instruction & 0xF000; line {
 	case 0x0000:
 		switch instruction {
 		case 0x00E0:
 			// CLS clear display
+			fmt.Println("do you jump here?")
 			clearFrame()
 		case 0x00EE:
 			// RET
@@ -184,6 +189,7 @@ func intepret(instruction uint16) {
 		chip8.Vx[x] = randomValue & kk
 
 	case 0xD000:
+		fmt.Println("does this run here?", 0xD000)
 		//  DRW Vx, Vy, nibble
 
 		// The interpreter reads n bytes from memory, starting at the address stored in I.
@@ -211,11 +217,11 @@ func intepret(instruction uint16) {
 		// keyboard
 		switch instruction & kk {
 		case 0x9E:
-			if keyboard.KeyListener(0x1) {
+			if keyboard.KeyListener(chip8.Vx[x]) {
 				chip8.PC += 2
 			}
 		case 0xA1:
-			if !keyboard.KeyListener(0x1) {
+			if !keyboard.KeyListener(chip8.Vx[x]) {
 				chip8.PC += 2
 			}
 		}
@@ -224,19 +230,41 @@ func intepret(instruction uint16) {
 		switch instruction & kk {
 		case 0x07:
 			// - LD Vx, DT
+			chip8.Vx[x] = uint16(chip8.Delay_timer)
 		case 0x0A:
 			// - LD Vx, K
+			// Wait for a key press, store the value of the key in Vx.
+
+			// All execution stops until a key is pressed, then the value of that key is stored in Vx.
+
+			chip8.Pause = true
+			// bit hacky, hopefully this works
+			for key := range keyboard.KeyBoardMaps {
+				if inpututil.IsKeyJustPressed(keyboard.KeyBoardMaps[key]) {
+					chip8.Pause = false
+					chip8.Vx[x] = key
+				}
+			}
+
+			// if
 		case 0x15:
 			// - LD DT, Vx
+			chip8.Delay_timer = chip8.Vx[x]
 		case 0x18:
 			// - LD ST, Vx
+			chip8.Sound_timer = chip8.Vx[x]
 		case 0x1E:
 			// - ADD I, Vx
 			chip8.IndexRegister += chip8.Vx[x]
 		case 0x29:
-		// - LD F, Vx
+			// - LD F, Vx
+			chip8.IndexRegister = chip8.Vx[x]
 		case 0x33:
 			// -/LD B, Vx
+			chip8.Memory[chip8.IndexRegister] = uint8(chip8.Vx[x] / 100)
+			chip8.Memory[chip8.IndexRegister+1] = uint8((chip8.Vx[x] % 100) / 10)
+			chip8.Memory[chip8.IndexRegister+2] = uint8(chip8.Vx[x] % 10)
+
 		case 0x55:
 			// - LD [I], Vx
 			for i := uint8(0); i < uint8(x); i++ {
@@ -301,8 +329,20 @@ func (g *Game) Draw(screen *ebiten.Image) {
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return screenWidth, screenHeight
 }
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
 
 func main() {
+	dat, err := os.ReadFile("logo.ch8")
+	check(err)
+	for value := range dat {
+		println("is there a difference?", value, uint16(value))
+
+		intepret(uint16(value))
+	}
 
 	if err := ebiten.RunGame(&Game{}); err != nil {
 		log.Fatal(err)
