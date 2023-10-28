@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"image/color"
 	_ "image/png"
 	"log"
@@ -36,6 +35,10 @@ type Game struct {
 func (g *Game) Update() error {
 	g.count++
 	// g.keys = inpututil.AppendPressedKeys(g.keys[:0]) //only call this in update function
+
+	opcode := (uint16(chip8.Memory[chip8.PC]) << 8) | uint16(chip8.Memory[chip8.PC+1])
+	intepret(opcode)
+
 	return nil
 }
 
@@ -49,6 +52,13 @@ func init() {
 	chip8.PC = 0x200
 	chip8.Stack = make([]uint16, 16)
 	chip8.IndexRegister = 0
+	dat, err := os.ReadFile("logo.ch8")
+	check(err)
+	var uintData = []uint8(dat)
+	// load program
+	for index, value := range uintData {
+		chip8.Memory[0x200+index] = value
+	}
 
 }
 func push(value uint16) {
@@ -74,12 +84,12 @@ func intepret(instruction uint16) {
 	y := (instruction & 0x00F0) >> 4
 	// fmt.Println(instruction, nnn, x, y, kk)
 	// fmt.Println(instruction & 0xF000)
+	// fmt.Println("show me instruction", instruction, nnn, kk, x, y)
 	switch line := instruction & 0xF000; line {
 	case 0x0000:
 		switch instruction {
 		case 0x00E0:
 			// CLS clear display
-			fmt.Println("do you jump here?")
 			clearFrame()
 		case 0x00EE:
 			// RET
@@ -189,7 +199,6 @@ func intepret(instruction uint16) {
 		chip8.Vx[x] = randomValue & kk
 
 	case 0xD000:
-		fmt.Println("does this run here?", 0xD000)
 		//  DRW Vx, Vy, nibble
 
 		// The interpreter reads n bytes from memory, starting at the address stored in I.
@@ -336,13 +345,6 @@ func check(e error) {
 }
 
 func main() {
-	dat, err := os.ReadFile("logo.ch8")
-	check(err)
-	for value := range dat {
-		println("is there a difference?", value, uint16(value))
-
-		intepret(uint16(value))
-	}
 
 	if err := ebiten.RunGame(&Game{}); err != nil {
 		log.Fatal(err)
