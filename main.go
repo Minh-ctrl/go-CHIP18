@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"image/color"
 	_ "image/png"
 	"log"
@@ -17,8 +18,8 @@ import (
 )
 
 const (
-	screenWidth  = monitor.Columns * monitor.Scale
-	screenHeight = monitor.Rows * monitor.Scale
+	screenWidth  = monitor.Columns * 20
+	screenHeight = monitor.Rows * 20
 	rectangleW   = 1 * monitor.Scale
 	rectangleH   = 1 * monitor.Scale
 	frameOX      = 0
@@ -52,7 +53,7 @@ func init() {
 	chip8.PC = 0x200
 	chip8.Stack = make([]uint16, 16)
 	chip8.IndexRegister = 0
-	dat, err := os.ReadFile("logo.ch8")
+	dat, err := os.ReadFile("IBM Logo.ch8")
 	check(err)
 	var uintData = []uint8(dat)
 	// load program
@@ -82,9 +83,6 @@ func intepret(instruction uint16) {
 	kk := instruction & 0xFF
 	x := (instruction & 0x0F00) >> 8
 	y := (instruction & 0x00F0) >> 4
-	// fmt.Println(instruction, nnn, x, y, kk)
-	// fmt.Println(instruction & 0xF000)
-	// fmt.Println("show me instruction", instruction, nnn, kk, x, y)
 	switch line := instruction & 0xF000; line {
 	case 0x0000:
 		switch instruction {
@@ -125,10 +123,12 @@ func intepret(instruction uint16) {
 		}
 	case 0x6000:
 		// LD Vx, byte
-		chip8.Vx[x] = kk
+		fmt.Println("6XNN (set register VX)")
+		chip8.Vx[x] = (instruction & 0xFF)
 	case 0x7000:
 		// ADD Vx, byte
-		chip8.Vx[x] += chip8.Vx[y]
+		fmt.Println("7XNN (add value to register VX)")
+		chip8.Vx[x] = chip8.Vx[x] + (instruction & 0xFF)
 	case 0x8000:
 		switch instruction & 0xF {
 
@@ -187,7 +187,7 @@ func intepret(instruction uint16) {
 
 	case 0xA000:
 		// LD I, addr
-		chip8.IndexRegister = nnn
+		chip8.IndexRegister = instruction & 0xFFF
 
 	case 0xB000:
 		// JP V0, addr
@@ -201,12 +201,6 @@ func intepret(instruction uint16) {
 	case 0xD000:
 		//  DRW Vx, Vy, nibble
 
-		// The interpreter reads n bytes from memory, starting at the address stored in I.
-		// These bytes are then displayed as sprites on screen at coordinates (Vx, Vy).
-		// Sprites are XORed onto the existing screen.
-		// If this causes any pixels to be erased, VF is set to 1, otherwise it is set to 0.
-		//  If the sprite is positioned so part of it is outside the coordinates of the display,
-		// it wraps around to the opposite side of the screen.
 		width := uint16(8)
 		height := (instruction & 0xF)
 		chip8.Vx[0xF] = 0
@@ -215,10 +209,11 @@ func intepret(instruction uint16) {
 			sprite := chip8.Memory[chip8.IndexRegister+row]
 			for col := uint16(0); col < width; col++ {
 				if (sprite & 0x80) > 0 {
-					setPixel(int(chip8.Vx[x]+row), int(chip8.Vx[y]+col))
-					chip8.Vx[0xF] = 1
+					if setPixel(int(chip8.Vx[x]+col), int(chip8.Vx[y]+row)) {
+						chip8.Vx[0xF] = 1
+					}
 				}
-				sprite >>= 1
+				sprite <<= 1
 			}
 		}
 
@@ -291,7 +286,7 @@ func intepret(instruction uint16) {
 }
 
 // functions for displaying monitor
-func setPixel(x int, y int) {
+func setPixel(x int, y int) (result bool) {
 	//
 	if x > monitor.Columns {
 		x -= monitor.Columns
@@ -304,14 +299,14 @@ func setPixel(x int, y int) {
 		y += monitor.Rows
 	}
 	var displayIndex = x + (y * monitor.Columns)
-	// flip the value
-	chip8.Framebuffer[displayIndex] = !chip8.Framebuffer[displayIndex]
+	chip8.Framebuffer[displayIndex] ^= 1
+	return chip8.Framebuffer[displayIndex] != 1
 }
 
 func clearFrame() {
 	// because i'm dumb
 	for i := range chip8.Framebuffer {
-		chip8.Framebuffer[i] = false
+		chip8.Framebuffer[i] = 0
 	}
 }
 func paint(screen *ebiten.Image) {
@@ -319,7 +314,7 @@ func paint(screen *ebiten.Image) {
 		var x = (i % monitor.Columns) * monitor.Scale
 		var y = math.Floor(float64(i)/monitor.Columns) * monitor.Scale
 
-		if chip8.Framebuffer[i] {
+		if chip8.Framebuffer[i] == 1 {
 			vector.DrawFilledRect(screen, float32(x), float32(y), rectangleW, rectangleH, color.White, false)
 		}
 	}

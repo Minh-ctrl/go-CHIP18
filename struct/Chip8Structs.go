@@ -33,9 +33,9 @@ type Chip8 struct {
 	Stack         []uint16 // array of 16 16-bit values
 	IndexRegister uint16
 
-	Delay_timer uint16        // delay timer
-	Sound_timer uint16        // sound timer
-	Framebuffer [64 * 32]bool //pixels with state on or off, represented in Array
+	Delay_timer uint16       // delay timer
+	Sound_timer uint16       // sound timer
+	Framebuffer [64 * 32]int //pixels with state on or off, represented in Array
 
 	Speed_cycle int
 
