@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"image/color"
 	_ "image/png"
 	"log"
@@ -123,11 +122,9 @@ func intepret(instruction uint16) {
 		}
 	case 0x6000:
 		// LD Vx, byte
-		fmt.Println("6XNN (set register VX)")
 		chip8.Vx[x] = (instruction & 0xFF)
 	case 0x7000:
 		// ADD Vx, byte
-		fmt.Println("7XNN (add value to register VX)")
 		chip8.Vx[x] = chip8.Vx[x] + (instruction & 0xFF)
 	case 0x8000:
 		switch instruction & 0xF {
