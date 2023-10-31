@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"image/color"
 	_ "image/png"
 	"log"
@@ -38,14 +37,13 @@ var chip8 chip8struct.Chip8
 func (g *Game) Update() error {
 	g.count++
 	// g.keys = inpututil.AppendPressedKeys(g.keys[:0]) //only call this in update function
-	if !chip8.Pause {
-		opcode := (uint16(chip8.Memory[chip8.PC]) << 8) | uint16(chip8.Memory[chip8.PC+1])
-		intepret(opcode)
-	}
+	opcode := (uint16(chip8.Memory[chip8.PC]) << 8) | uint16(chip8.Memory[chip8.PC+1])
+	intepret(opcode)
 
 	if !chip8.Pause {
 		updateDelayTimer()
 	}
+
 	return nil
 }
 func updateDelayTimer() {
@@ -73,6 +71,15 @@ func init() {
 		chip8.Memory[0x200+index] = int(value)
 	}
 
+}
+
+func getPressedKey() uint16 {
+	for keyboardIndex := range keyboard.KeyBoardMaps { // this is a bad solution AAAAA
+		if inpututil.IsKeyJustPressed(keyboard.KeyBoardMaps[keyboardIndex]) {
+			return keyboardIndex
+		}
+	}
+	return 0xFF
 }
 
 func loadSpritesIntoMemory() {
@@ -280,19 +287,16 @@ func intepret(instruction uint16) {
 
 			// All execution stops until a key is pressed, then the value of that key is stored in Vx.
 
-			chip8.Pause = true
 			//  this is the problem
-			for key := range keyboard.KeyBoardMaps {
-				if inpututil.IsKeyJustPressed(keyboard.KeyBoardMaps[key]) {
-					chip8.Pause = false
-					chip8.Vx[x] = key
-					fmt.Println("does this run", key)
-				} else {
-					chip8.PC -= 2
-				}
-			}
+			keyboardIndex := getPressedKey()
 
-			fmt.Println("gone")
+			if keyboardIndex != 0xFF {
+				chip8.Vx[x] = keyboardIndex
+			} else {
+
+				chip8.PC -= 2
+
+			}
 
 			// if
 		case 0x15:
