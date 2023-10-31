@@ -8,9 +8,9 @@ import (
 	"math/rand"
 	"os"
 
-	keyboard "github.com/Minh-ctrl/go-CHIP18.git/keyboard"
-	"github.com/Minh-ctrl/go-CHIP18.git/monitor"
-	chip8struct "github.com/Minh-ctrl/go-CHIP18.git/struct"
+	keyboard "github.com/Minh-ctrl/go-CHIP18/keyboard"
+	"github.com/Minh-ctrl/go-CHIP18/monitor"
+	chip8struct "github.com/Minh-ctrl/go-CHIP18/struct"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
