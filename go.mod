@@ -1,4 +1,4 @@
-module github.com/Minh-ctrl/go-CHIP18.git
+module github.com/Minh-ctrl/go-CHIP18
 
 go 1.19
 
