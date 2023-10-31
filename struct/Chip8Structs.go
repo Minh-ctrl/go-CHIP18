@@ -25,7 +25,7 @@ package chip8struct
 // |  interpreter  |
 // +---------------+= 0x000 (0) Start of Chip-8 RAM
 type Chip8 struct {
-	Memory [4096]uint8 // 4096 bytes of memory
+	Memory [4096]int // 4096 bytes of memory
 
 	Vx [16]uint16 // 8 bit registers
 	PC uint16     // program counter, this is where data starts. chip 8 is 0x200

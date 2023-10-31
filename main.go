@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"image/color"
 	_ "image/png"
 	"log"
@@ -17,32 +18,42 @@ import (
 )
 
 const (
-	screenWidth  = monitor.Columns * 20
-	screenHeight = monitor.Rows * 20
+	screenWidth  = monitor.Columns * monitor.Scale
+	screenHeight = monitor.Rows * monitor.Scale
 	rectangleW   = 1 * monitor.Scale
 	rectangleH   = 1 * monitor.Scale
 	frameOX      = 0
 	frameOY      = 0
 	frameWidth   = monitor.Columns
 	frameHeight  = monitor.Rows
-	frameCount   = 8
+	speed        = 10
 )
 
 type Game struct {
 	count int
 }
 
+var chip8 chip8struct.Chip8
+
 func (g *Game) Update() error {
 	g.count++
 	// g.keys = inpututil.AppendPressedKeys(g.keys[:0]) //only call this in update function
+	if !chip8.Pause {
+		opcode := (uint16(chip8.Memory[chip8.PC]) << 8) | uint16(chip8.Memory[chip8.PC+1])
+		intepret(opcode)
+	}
 
-	opcode := (uint16(chip8.Memory[chip8.PC]) << 8) | uint16(chip8.Memory[chip8.PC+1])
-	intepret(opcode)
-
+	if !chip8.Pause {
+		updateDelayTimer()
+	}
 	return nil
 }
+func updateDelayTimer() {
+	if chip8.Delay_timer > 0 {
+		chip8.Delay_timer -= 1
+	}
 
-var chip8 chip8struct.Chip8
+}
 
 // stack push and pop implementation
 
@@ -52,15 +63,44 @@ func init() {
 	chip8.PC = 0x200
 	chip8.Stack = make([]uint16, 16)
 	chip8.IndexRegister = 0
-	dat, err := os.ReadFile("IBM Logo.ch8")
+	dat, err := os.ReadFile("petdog.ch8")
 	check(err)
 	var uintData = []uint8(dat)
 	// load program
+	loadSpritesIntoMemory()
 	for index, value := range uintData {
-		chip8.Memory[0x200+index] = value
+		// load into memory
+		chip8.Memory[0x200+index] = int(value)
 	}
 
 }
+
+func loadSpritesIntoMemory() {
+	sprites := []int{
+		0xF0, 0x90, 0x90, 0x90, 0xF0, //0
+		0x20, 0x60, 0x20, 0x20, 0x70, //1
+		0xF0, 0x10, 0xF0, 0x80, 0xF0, //2
+		0xF0, 0x10, 0xF0, 0x10, 0xF0, //3
+		0x90, 0x90, 0xF0, 0x10, 0x10, //4
+		0xF0, 0x80, 0xF0, 0x10, 0xF0, //5
+		0xF0, 0x80, 0xF0, 0x90, 0xF0, //6
+		0xF0, 0x10, 0x20, 0x40, 0x40, //7
+		0xF0, 0x90, 0xF0, 0x90, 0xF0, //8
+		0xF0, 0x90, 0xF0, 0x10, 0xF0, //9
+		0xF0, 0x90, 0xF0, 0x90, 0x90, //A
+		0xE0, 0x90, 0xE0, 0x90, 0xE0, //B
+		0xF0, 0x80, 0x80, 0x80, 0xF0, //C
+		0xE0, 0x90, 0x90, 0x90, 0xE0, //D
+		0xF0, 0x80, 0xF0, 0x80, 0xF0, //E
+		0xF0, 0x80, 0xF0, 0x80, 0x80, //F
+	}
+
+	// According to the technical reference, sprites are stored in the interpreter section of memory starting at hex 0x000
+	for i := 0; i < len(sprites); i++ {
+		chip8.Memory[i] = sprites[i]
+	}
+}
+
 func push(value uint16) {
 	chip8.Stack = append(chip8.Stack, value)
 
@@ -123,6 +163,7 @@ func intepret(instruction uint16) {
 	case 0x6000:
 		// LD Vx, byte
 		chip8.Vx[x] = (instruction & 0xFF)
+
 	case 0x7000:
 		// ADD Vx, byte
 		chip8.Vx[x] = chip8.Vx[x] + (instruction & 0xFF)
@@ -145,12 +186,11 @@ func intepret(instruction uint16) {
 			// ADD Vx, Vy
 			// chip8.Vx[x] = chip8.Vx[x] + chip8.Vx[y]
 			sum := chip8.Vx[x] + chip8.Vx[y]
+			chip8.Vx[0xF] = 0
 			if sum > 0xFF {
 				chip8.Vx[0xF] = 1
-				break
 			}
-			chip8.Vx[0xF] = 0
-
+			chip8.Vx[x] = sum
 		case 0x5:
 			// SUB Vx, Vy
 			chip8.Vx[0xF] = 0
@@ -159,20 +199,22 @@ func intepret(instruction uint16) {
 			}
 			// Vy is subtracted from Vx, and the results stored in Vx.
 			chip8.Vx[x] -= chip8.Vx[y]
+
 		case 0x6:
 			//  SHR Vx {, Vy} this one is interesting for different implementation :think:
 			chip8.Vx[0xF] = chip8.Vx[x] & 0x1
-			chip8.Vx[x] >>= 1
+			chip8.Vx[x] = chip8.Vx[x] >> 1
+
 		case 0x7:
 			// SUBN Vx, Vy
 			chip8.Vx[0xF] = 0
 			if chip8.Vx[y] > chip8.Vx[x] {
 				chip8.Vx[0xF] = 1
-
 			}
 			chip8.Vx[x] = chip8.Vx[y] - chip8.Vx[x]
 		case 0xE:
 			//  SHL Vx {, Vy}
+			chip8.Vx[0xF] = chip8.Vx[x] & 0x80
 			chip8.Vx[x] <<= 1
 		default:
 			// throw error
@@ -192,7 +234,7 @@ func intepret(instruction uint16) {
 
 	case 0xC000:
 		// RND Vx, byte
-		randomValue := uint16(rand.Intn(256))
+		randomValue := uint16(rand.Intn(256) * 0xFF)
 		chip8.Vx[x] = randomValue & kk
 
 	case 0xD000:
@@ -239,45 +281,55 @@ func intepret(instruction uint16) {
 			// All execution stops until a key is pressed, then the value of that key is stored in Vx.
 
 			chip8.Pause = true
-			// bit hacky, hopefully this works
+			//  this is the problem
 			for key := range keyboard.KeyBoardMaps {
 				if inpututil.IsKeyJustPressed(keyboard.KeyBoardMaps[key]) {
 					chip8.Pause = false
 					chip8.Vx[x] = key
+					fmt.Println("does this run", key)
+				} else {
+					chip8.PC -= 2
 				}
 			}
+
+			fmt.Println("gone")
 
 			// if
 		case 0x15:
 			// - LD DT, Vx
 			chip8.Delay_timer = chip8.Vx[x]
+
 		case 0x18:
 			// - LD ST, Vx
 			chip8.Sound_timer = chip8.Vx[x]
+
 		case 0x1E:
 			// - ADD I, Vx
 			chip8.IndexRegister += chip8.Vx[x]
+
 		case 0x29:
 			// - LD F, Vx
-			chip8.IndexRegister = chip8.Vx[x]
+			chip8.IndexRegister = chip8.Vx[x] * 5
+
 		case 0x33:
 			// -/LD B, Vx
-			chip8.Memory[chip8.IndexRegister] = uint8(chip8.Vx[x] / 100)
-			chip8.Memory[chip8.IndexRegister+1] = uint8((chip8.Vx[x] % 100) / 10)
-			chip8.Memory[chip8.IndexRegister+2] = uint8(chip8.Vx[x] % 10)
+			chip8.Memory[int(chip8.IndexRegister)] = int(chip8.Vx[x] / 100)
+			chip8.Memory[int(chip8.IndexRegister+1)] = int((chip8.Vx[x] % 100) / 10)
+			chip8.Memory[int(chip8.IndexRegister+2)] = int((chip8.Vx[x] % 10))
 
 		case 0x55:
 			// - LD [I], Vx
-			for i := uint8(0); i < uint8(x); i++ {
-				chip8.Memory[uint8(chip8.IndexRegister)+i] = uint8(chip8.Vx[i])
+			for i := 0; i <= int(x); i++ {
+				chip8.Memory[i+int(chip8.IndexRegister)] = int(chip8.Vx[i])
 			}
 
 		case 0x65:
 			// - LD Vx, [I]
 			for i := uint16(0); i < uint16(x); i++ {
-				chip8.Vx[i] = uint16(chip8.Memory[chip8.IndexRegister+i])
+				chip8.Vx[chip8.IndexRegister] = uint16(chip8.Memory[chip8.IndexRegister+i])
 			}
 		}
+
 	}
 
 }
